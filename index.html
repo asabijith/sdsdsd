@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canteen Ordering System</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+    <style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f5f5f5;
+    color: #333;
+}
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+.menu-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+.menu-item {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden;
+}
+.menu-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+.menu-item img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+}
+.item-details {
+    padding: 15px;
+}
+.item-title {
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    font-size: 1.2rem;
+}
+.item-price {
+    font-weight: bold;
+    color: #e65100;
+    margin: 8px 0;
+}
+.item-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+}
+.quantity-control {
+    display: flex;
+    align-items: center;
+}
+.quantity-btn {
+    width: 30px;
+    height: 30px;
+    background: #f0f0f0;
+    border: none;
+    border-radius: 4px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+.quantity-btn:hover {
+    background: #e0e0e0;
+}
+.quantity {
+    margin: 0 10px;
+    font-weight: 600;
+}
+.add-to-cart {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+.add-to-cart:hover {
+    background: #388E3C;
+}
+.cart-icon {
+    position: relative;
+    cursor: pointer;
+}
+.cart-count {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: #e65100;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+.modal-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 20px;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 600px;
+    animation: modalOpen 0.3s ease;
+}
+@keyframes modalOpen {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+.close {
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.cart-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 15px 0;
+    border-bottom: 1px solid #eee;
+}
+.cart-item-details {
+    flex-grow: 1;
+}
+.cart-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+.cart-total {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    font-size: 1.2rem;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 2px solid #eee;
+}
+.checkout-btn {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1rem;
+    margin-top: 20px;
+    width: 100%;
+    transition: background 0.2s;
+}
+.checkout-btn:hover {
+    background: #388E3C;
+}
+.tab-container {
+    margin-bottom: 20px;
+}
+.tabs {
+    display: flex;
+    border-bottom: 1px solid #ddd;
+}
+.tab {
+    padding: 10px 20px;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: border-color 0.2s;
+}
+.tab.active {
+    border-color: #4CAF50;
+    font-weight: bold;
+}
+.tab-content {
+    display: none;
+    padding: 20px 0;
+}
+.tab-content.active {
+    display: block;
+}
+.payment-options {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 20px;
+}
+.payment-option {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+.payment-option.selected {
+    border-color: #4CAF50;
+    background-color: #f0fff0;
+}
+.payment-option input {
+    margin-right: 15px;
+}
+.order-success {
+    text-align: center;
+    padding: 40px 20px;
+}
+.order-success h2 {
+    color: #4CAF50;
+}
+.order-history {
+    margin-top: 20px;
+}
+.order-card {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+.order-header {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+.order-items {
+    margin-bottom: 15px;
+}
+.order-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+.status-badge {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+.status-pending {
+    background-color: #FFF9C4;
+    color: #F57F17;
+}
+.status-completed {
+    background-color: #E8F5E9;
+    color: #388E3C;
+}
+.btn {
+    display: inline-block;
+    padding: 8px 16px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+    text-decoration: none;
+}
+.btn:hover {
+    background: #388E3C;
+}
+.btn-secondary {
+    background: #757575;
+}
+.btn-secondary:hover {
+    background: #616161;
+}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Canteen Ordering System</h1>
+            <div class="cart-icon" id="cartIcon">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 22C9.55228 22 10 21.5523 10 21C10 20.4477 9.55228 20 9 20C8.44772 20 8 20.4477 8 21C8 21.5523 8.44772 22 9 22Z" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M20 22C20.5523 22 21 21.5523 21 21C21 20.4477 20.5523 20 20 20C19.4477 20 19 20.4477 19 21C19 21.5523 19.4477 22 20 22Z" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M1 1H5L7.68 14.39C7.77144 14.8504 8.02191 15.264 8.38755 15.5583C8.75318 15.8526 9.2107 16.009 9.68 16H19.4C19.8693 16.009 20.3268 15.8526 20.6925 15.5583C21.0581 15.264 21.3086 14.8504 21.4 14.39L23 6H6" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span class="cart-count" id="cartCount">0</span>
+            </div>
+        </div>
+
+        <div class="tab-container">
+            <div class="tabs">
+                <div class="tab active" data-tab="menu">Menu</div>
+                <div class="tab" data-tab="orders">My Orders</div>
+            </div>
+            
+            <div id="menuTab" class="tab-content active">
+                <div class="menu-container" id="menuContainer">
+                    <!-- Menu items will be dynamically added here -->
+                </div>
+            </div>
+            
+            <div id="ordersTab" class="tab-content">
+                <h2>Your Order History</h2>
+                <div class="order-history" id="orderHistory">
+                    <!-- Order history will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cart Modal -->
+    <div id="cartModal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="closeCart">&times;</span>
+            <h2>Your Cart</h2>
+            <div id="cartItems">
+                <!-- Cart items will be displayed here -->
+            </div>
+            <div class="cart-total">
+                <span>Total:</span>
+                <span id="cartTotal">₹0.00</span>
+            </div>
+            <button class="checkout-btn" id="checkoutBtn">Proceed to Checkout</button>
+        </div>
+    </div>
+
+    <!-- Checkout Modal -->
+    <div id="checkoutModal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="closeCheckout">&times;</span>
+            <h2>Checkout</h2>
+            <div class="payment-options">
+                <h3>Select Payment Method</h3>
+                <label class="payment-option">
+                    <input type="radio" name="payment" value="online" checked>
+                    <span>Online Payment</span>
+                </label>
+                <label class="payment-option">
+                    <input type="radio" name="payment" value="cash">
+                    <span>Cash on Delivery</span>
+                </label>
+                
+            </div>
+            <button class="checkout-btn" id="placeOrderBtn">Place Order</button>
+        </div>
+    </div>
+
+    <!-- Order Success Modal -->
+    <div id="successModal" class="modal">
+        <div class="modal-content">
+            <div class="order-success">
+                <h2>Order Placed Successfully!</h2>
+                <p>Your order has been placed and will be processed shortly.</p>
+                <p>Order ID: <span id="orderId"></span></p>
+                <button class="btn" id="viewOrdersBtn">View My Orders</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.1/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.1/firebase-database-compat.min.js"></script>
+
+    <script>
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAVeSrg9RpHmfO-mdMey9TuoEla-zlcTU0",
+  authDomain: "dssdsd-bf4a8.firebaseapp.com",
+  databaseURL: "https://dssdsd-bf4a8-default-rtdb.firebaseio.com",
+  projectId: "dssdsd-bf4a8",
+  storageBucket: "dssdsd-bf4a8.firebasestorage.app",
+  messagingSenderId: "676931866710",
+  appId: "1:676931866710:web:d29440a8fab9307f5aabf7",
+  measurementId: "G-VZZ3EYD14T"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Sample menu items (in a real app, you would fetch these from Firebase)
+        const menuItems = [
+            {
+                id: 1,
+                name: "Veg Sandwich",
+                price: 50,
+                image: "https://cdn.pixabay.com/photo/2020/06/07/08/39/sandwich-5269480_1280.jpg",
+                description: "Fresh vegetables sandwiched between bread slices with mint chutney."
+            },
+            {
+                id: 2,
+                name: "Masala Dosa",
+                price: 70,
+                image: "https://cdn.pixabay.com/photo/2016/10/25/13/42/indian-1768906_1280.jpg",
+                description: "South Indian crispy crepe filled with spiced potato filling."
+            },
+            {
+                id: 3,
+                name: "Veg Biryani",
+                price: 90,
+                image: "https://cdn.pixabay.com/photo/2022/06/27/05/37/biryani-7286737_1280.jpg",
+                description: "Aromatic rice dish cooked with vegetables and special spices."
+            },
+            {
+                id: 4,
+                name: "Paneer Tikka",
+                price: 120,
+                image: "https://files.catbox.moe/dyrfqo.jpeg",
+                description: "Marinated cottage cheese cubes grilled to perfection."
+            },
+            {
+                id: 5,
+                name: "Samosa",
+                price: 25,
+                image: "https://cdn.pixabay.com/photo/2022/05/07/11/37/samosa-7180078_1280.jpg",
+                description: "Triangular pastry filled with spicy potato filling."
+            },
+            {
+                id: 6,
+                name: "Cold Coffee",
+                price: 60,
+                image: "https://cdn.pixabay.com/photo/2020/03/20/20/49/coffe-4951985_1280.jpg",
+                description: "Refreshing cold coffee topped with whipped cream."
+            }
+        ];
+
+        // Cart data
+        let cart = [];
+        
+        // DOM elements
+        const menuContainer = document.getElementById('menuContainer');
+        const cartIcon = document.getElementById('cartIcon');
+        const cartModal = document.getElementById('cartModal');
+        const closeCart = document.getElementById('closeCart');
+        const cartItems = document.getElementById('cartItems');
+        const cartTotal = document.getElementById('cartTotal');
+        const cartCount = document.getElementById('cartCount');
+        const checkoutBtn = document.getElementById('checkoutBtn');
+        const checkoutModal = document.getElementById('checkoutModal');
+        const closeCheckout = document.getElementById('closeCheckout');
+        const placeOrderBtn = document.getElementById('placeOrderBtn');
+        const successModal = document.getElementById('successModal');
+        const orderId = document.getElementById('orderId');
+        const viewOrdersBtn = document.getElementById('viewOrdersBtn');
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const orderHistory = document.getElementById('orderHistory');
+
+        // Display menu items
+        function displayMenu() {
+            menuContainer.innerHTML = '';
+            menuItems.forEach(item => {
+                const menuItemEl = document.createElement('div');
+                menuItemEl.className = 'menu-item';
+                menuItemEl.innerHTML = `
+                    <img src="${item.image}" alt="${item.name}">
+                    <div class="item-details">
+                        <h3 class="item-title">${item.name}</h3>
+                        <p>${item.description}</p>
+                        <div class="item-price">₹${item.price.toFixed(2)}</div>
+                        <div class="item-actions">
+                            <div class="quantity-control">
+                                <button class="quantity-btn decrease" data-id="${item.id}">-</button>
+                                <span class="quantity" id="quantity-${item.id}">1</span>
+                                <button class="quantity-btn increase" data-id="${item.id}">+</button>
+                            </div>
+                            <button class="add-to-cart" data-id="${item.id}">Add to Cart</button>
+                        </div>
+                    </div>
+                `;
+                menuContainer.appendChild(menuItemEl);
+            });
+
+            // Add event listeners for quantity buttons
+            document.querySelectorAll('.quantity-btn.increase').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = e.target.getAttribute('data-id');
+                    const quantityEl = document.getElementById(`quantity-${id}`);
+                    let quantity = parseInt(quantityEl.textContent);
+                    quantity++;
+                    quantityEl.textContent = quantity;
+                    e.stopPropagation();
+                });
+            });
+
+            document.querySelectorAll('.quantity-btn.decrease').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = e.target.getAttribute('data-id');
+                    const quantityEl = document.getElementById(`quantity-${id}`);
+                    let quantity = parseInt(quantityEl.textContent);
+                    if (quantity > 1) {
+                        quantity--;
+                        quantityEl.textContent = quantity;
+                    }
+                    e.stopPropagation();
+                });
+            });
+
+            // Add event listeners for add to cart buttons
+            document.querySelectorAll('.add-to-cart').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = parseInt(e.target.getAttribute('data-id'));
+                    const quantityEl = document.getElementById(`quantity-${id}`);
+                    const quantity = parseInt(quantityEl.textContent);
+                    
+                    addToCart(id, quantity);
+                    
+                    // Reset quantity to 1
+                    quantityEl.textContent = '1';
+                    
+                    // Show notification
+                    showNotification('Item added to cart!');
+                });
+            });
+        }
+
+        // Add item to cart
+        function addToCart(itemId, quantity) {
+            const item = menuItems.find(item => item.id === itemId);
+            
+            // Check if item already in cart
+            const existingItemIndex = cart.findIndex(cartItem => cartItem.id === itemId);
+            
+            if (existingItemIndex !== -1) {
+                // Update quantity if item already exists
+                cart[existingItemIndex].quantity += quantity;
+            } else {
+                // Add new item to cart
+                cart.push({
+                    id: item.id,
+                    name: item.name,
+                    price: item.price,
+                    quantity: quantity
+                });
+            }
+            
+            // Update cart count
+            updateCartCount();
+        }
+
+        // Update cart count
+        function updateCartCount() {
+            const totalItems = cart.reduce((total, item) => total + item.quantity, 0);
+            cartCount.textContent = totalItems;
+        }
+
+        // Display cart items
+        function displayCart() {
+            if (cart.length === 0) {
+                cartItems.innerHTML = '<p>Your cart is empty.</p>';
+                cartTotal.textContent = '₹0.00';
+                checkoutBtn.disabled = true;
+                checkoutBtn.style.opacity = 0.5;
+                return;
+            }
+
+            checkoutBtn.disabled = false;
+            checkoutBtn.style.opacity = 1;
+            
+            cartItems.innerHTML = '';
+            let total = 0;
+            
+            cart.forEach(item => {
+                const itemTotal = item.price * item.quantity;
+                total += itemTotal;
+                
+                const cartItemEl = document.createElement('div');
+                cartItemEl.className = 'cart-item';
+                cartItemEl.innerHTML = `
+                    <div class="cart-item-details">
+                        <h3>${item.name}</h3>
+                        <p>₹${item.price.toFixed(2)} x ${item.quantity}</p>
+                    </div>
+                    <div class="cart-item-actions">
+                        <span>₹${itemTotal.toFixed(2)}</span>
+                        <button class="btn btn-secondary remove-item" data-id="${item.id}">Remove</button>
+                    </div>
+                `;
+                cartItems.appendChild(cartItemEl);
+            });
+            
+            cartTotal.textContent = `₹${total.toFixed(2)}`;
+            
+            // Add event listeners for remove buttons
+            document.querySelectorAll('.remove-item').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = parseInt(e.target.getAttribute('data-id'));
+                    removeFromCart(id);
+                    displayCart();
+                });
+            });
+        }
+
+        // Remove item from cart
+        function removeFromCart(itemId) {
+            cart = cart.filter(item => item.id !== itemId);
+            updateCartCount();
+        }
+
+        // Show notification
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.style.position = 'fixed';
+            notification.style.bottom = '20px';
+            notification.style.right = '20px';
+            notification.style.backgroundColor = '#4CAF50';
+            notification.style.color = 'white';
+            notification.style.padding = '10px 20px';
+            notification.style.borderRadius = '4px';
+            notification.style.zIndex = '1000';
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transition = 'opacity 0.5s ease';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 500);
+            }, 2000);
+        }
+
+        // Place order
+        function placeOrder() {
+            if (cart.length === 0) return;
+            
+            const paymentMethod = document.querySelector('input[name="payment"]:checked').value;
+            
+            // Generate a unique order ID
+            const newOrderId = Date.now().toString();
+            
+            // Calculate total
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            
+            // Create order object
+            const order = {
+                id: newOrderId,
+                date: new Date().toISOString(),
+                items: cart,
+                total: total,
+                paymentMethod: paymentMethod,
+                status: 'pending'
+            };
+            
+            // Save order to Firebase
+            database.ref('orders/' + newOrderId).set(order)
+                .then(() => {
+                    // Show success message
+                    orderId.textContent = newOrderId;
+                    checkoutModal.style.display = 'none';
+                    successModal.style.display = 'block';
+                    
+                    // Clear cart
+                    cart = [];
+                    updateCartCount();
+                })
+                .catch(error => {
+                    console.error("Error saving order: ", error);
+                    alert("There was an error placing your order. Please try again.");
+                });
+        }
+
+        // Load orders from Firebase
+        function loadOrders() {
+            orderHistory.innerHTML = '<p>Loading your orders...</p>';
+            
+            database.ref('orders').orderByChild('date').limitToLast(10).once('value')
+                .then((snapshot) => {
+                    if (!snapshot.exists()) {
+                        orderHistory.innerHTML = '<p>You have no previous orders.</p>';
+                        return;
+                    }
+                    
+                    orderHistory.innerHTML = '';
+                    const orders = [];
+                    
+                    snapshot.forEach((childSnapshot) => {
+                        orders.push(childSnapshot.val());
+                    });
+                    
+                    // Sort orders by date (newest first)
+                    orders.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    
+                    orders.forEach(order => {
+                        const date = new Date(order.date).toLocaleString();
+                        const statusClass = order.status === 'pending' ? 'status-pending' : 'status-completed';
+                        
+                        const orderEl = document.createElement('div');
+                        orderEl.className = 'order-card';
+                        
+                        let itemsHtml = '';
+                        order.items.forEach(item => {
+                            itemsHtml += `
+                                <div class="order-item">
+                                    <span>${item.name} x ${item.quantity}</span>
+                                    <span>₹${(item.price * item.quantity).toFixed(2)}</span>
+                                </div>
+                            `;
+                        });
+                        
+                        orderEl.innerHTML = `
+                            <div class="order-header">
+                                <div>
+                                    <strong>Order #${order.id}</strong>
+                                    <div>${date}</div>
+                                </div>
+                                <span class="status-badge ${statusClass}">${order.status}</span>
+                            </div>
+                            <div class="order-items">
+                                ${itemsHtml}
+                            </div>
+                            <div>
+                                <strong>Payment Method:</strong> ${order.paymentMethod === 'online' ? 'Online Payment' : 'Cash on Delivery'}
+                            </div>
+                            <div class="cart-total">
+                                <span>Total:</span>
+                                <span>₹${order.total.toFixed(2)}</span>
+                            </div>
+                        `;
+                        
+                        orderHistory.appendChild(orderEl);
+                    });
+                })
+                .catch(error => {
+                    console.error("Error loading orders: ", error);
+                    orderHistory.innerHTML = '<p>There was an error loading your orders. Please try again.</p>';
+                });
+        }
+
+        // Event Listeners
+        cartIcon.addEventListener('click', () => {
+            displayCart();
+            cartModal.style.display = 'block';
+        });
+
+        closeCart.addEventListener('click', () => {
+            cartModal.style.display = 'none';
+        });
+
+        checkoutBtn.addEventListener('click', () => {
+            cartModal.style.display = 'none';
+            checkoutModal.style.display = 'block';
+        });
+
+        closeCheckout.addEventListener('click', () => {
+            checkoutModal.style.display = 'none';
+        });
+
+        placeOrderBtn.addEventListener('click', placeOrder);
+
+        viewOrdersBtn.addEventListener('click', () => {
+            successModal.style.display = 'none';
+            document.querySelector('.tab[data-tab="orders"]').click();
+        });
+
+        // Tab functionality
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active class from all tabs
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(content => content.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                tab.classList.add('active');
+                
+                // Show corresponding content
+                const tabId = tab.getAttribute('data-tab');
+                document.getElementById(tabId + 'Tab').classList.add('active');
+                
+                // Load orders if orders tab is active
+                if (tabId === 'orders') {
+                    loadOrders();
+                }
+            });
+        });
+
+        // Close modals when clicking outside
+        window.addEventListener('click', (e) => {
+            if (e.target === cartModal) {
+                cartModal.style.display = 'none';
+            } else if (e.target === checkoutModal) {
+                checkoutModal.style.display = 'none';
+            }
+        });
+
+        // Initialize the app
+        displayMenu();
+    </script>
+</body>
+</html>
